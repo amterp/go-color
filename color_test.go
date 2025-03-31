@@ -553,3 +553,89 @@ func TestRGB(t *testing.T) {
 		})
 	}
 }
+
+func TestSpecificUnset(t *testing.T) {
+	originalOutput := Output
+	t.Cleanup(func() {
+		Output = originalOutput
+		NoColor = false
+	})
+	NoColor = false
+
+	boldC := New(Bold)
+	underlineC := New(Underline)
+
+	t.Run("Print retains outer style", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		Output = buf
+
+		fmt.Fprint(buf, underlineC.format())
+		boldC.Print("bold text")
+		fmt.Fprint(buf, " still underlined?")
+		buf.Reset()
+
+		fmt.Fprint(buf, underlineC.format())
+		boldC.Printf("bold text")
+		fmt.Fprint(buf, " still underlined?")
+		fmt.Fprint(buf, New(Reset).format())
+
+		want := "\x1b[4m\x1b[1mbold text\x1b[22m still underlined?\x1b[0m"
+		got := readRaw(t, buf)
+
+		if want != got {
+			t.Errorf("Print specific reset failed:\n want: %q\n  got: %q", want, got)
+		}
+	})
+
+	t.Run("Fprint retains outer style", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		fmt.Fprint(buf, underlineC.format())
+		boldC.Fprintf(buf, "bold text")
+		fmt.Fprint(buf, " still underlined?")
+		fmt.Fprint(buf, New(Reset).format())
+
+		want := "\x1b[4m\x1b[1mbold text\x1b[22m still underlined?\x1b[0m"
+		got := readRaw(t, buf)
+
+		if want != got {
+			t.Errorf("Fprint specific reset failed:\n want: %q\n  got: %q", want, got)
+		}
+	})
+
+	t.Run("Manual Set/Unset retains outer style", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+		Output = buf
+
+		fmt.Fprint(buf, underlineC.format())
+		boldC.Set()
+		fmt.Fprint(buf, "bold text")
+		boldC.Unset()
+		fmt.Fprint(buf, " still underlined?")
+		fmt.Fprint(buf, New(Reset).format())
+
+		want := "\x1b[4m\x1b[1mbold text\x1b[22m still underlined?\x1b[0m"
+		got := readRaw(t, buf)
+
+		if want != got {
+			t.Errorf("Manual Set/Unset specific reset failed:\n want: %q\n  got: %q", want, got)
+		}
+	})
+
+	t.Run("UnsetWriter retains outer style", func(t *testing.T) {
+		buf := new(bytes.Buffer)
+
+		fmt.Fprint(buf, underlineC.format())
+		boldC.SetWriter(buf)
+		fmt.Fprint(buf, "bold text")
+		boldC.UnsetWriter(buf)
+		fmt.Fprint(buf, " still underlined?")
+		fmt.Fprint(buf, New(Reset).format())
+
+		want := "\x1b[4m\x1b[1mbold text\x1b[22m still underlined?\x1b[0m"
+		got := readRaw(t, buf)
+
+		if want != got {
+			t.Errorf("UnsetWriter specific reset failed:\n want: %q\n  got: %q", want, got)
+		}
+	})
+}

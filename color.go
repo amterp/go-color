@@ -208,12 +208,13 @@ func (c *Color) Set() *Color {
 	return c
 }
 
-func (c *Color) unset() {
+func (c *Color) Unset() *Color {
 	if c.isNoColorSet() {
-		return
+		return c
 	}
 
-	Unset()
+	fmt.Fprint(Output, c.unformat())
+	return c
 }
 
 // SetWriter is used to set the SGR sequence with the given io.Writer. This is
@@ -235,7 +236,7 @@ func (c *Color) UnsetWriter(w io.Writer) {
 		return
 	}
 
-	fmt.Fprintf(w, "%s[%dm", escape, Reset)
+	fmt.Fprint(w, c.unformat())
 }
 
 // Add is used to chain SGR parameters. Use as many as parameters to combine
@@ -264,7 +265,7 @@ func (c *Color) Fprint(w io.Writer, a ...interface{}) (n int, err error) {
 // color.
 func (c *Color) Print(a ...interface{}) (n int, err error) {
 	c.Set()
-	defer c.unset()
+	defer c.Unset()
 
 	return fmt.Fprint(Output, a...)
 }
@@ -285,7 +286,7 @@ func (c *Color) Fprintf(w io.Writer, format string, a ...interface{}) (n int, er
 // This is the standard fmt.Printf() method wrapped with the given color.
 func (c *Color) Printf(format string, a ...interface{}) (n int, err error) {
 	c.Set()
-	defer c.unset()
+	defer c.Unset()
 
 	return fmt.Fprintf(Output, format, a...)
 }
