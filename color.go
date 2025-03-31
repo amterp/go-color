@@ -44,6 +44,7 @@ func noColorIsSet() bool {
 type Color struct {
 	params  []Attribute
 	noColor *bool
+	link    string
 }
 
 // Attribute defines a single SGR Code
@@ -412,8 +413,8 @@ func (c *Color) sequence() string {
 	return strings.Join(format, ";")
 }
 
-// wrap wraps the s string with the colors attributes. The string is ready to
-// be printed.
+// wrap wraps the s string with the colors attributes and link if specified.
+// The string is ready to be printed.
 func (c *Color) wrap(s string) string {
 	if c.isNoColorSet() {
 		return s
@@ -423,12 +424,19 @@ func (c *Color) wrap(s string) string {
 }
 
 func (c *Color) format() string {
-	return fmt.Sprintf("%s[%sm", escape, c.sequence())
+	sgrStart := fmt.Sprintf("%s[%sm", escape, c.sequence())
+
+	if c.link != "" {
+		// OSC 8 start: ESC]8;;URL ESC\  (or ST for String Terminator)
+		oscStart := fmt.Sprintf("%s]8;;%s%s\\", escape, c.link, escape)
+		return oscStart + sgrStart
+	}
+
+	return sgrStart
 }
 
 func (c *Color) unformat() string {
-	//return fmt.Sprintf("%s[%dm", escape, Reset)
-	//for each element in sequence let's use the specific reset escape, or the generic one if not found
+	// for each element in sequence let's use the specific reset escape, or the generic one if not found
 	format := make([]string, len(c.params))
 	for i, v := range c.params {
 		format[i] = strconv.Itoa(int(Reset))
@@ -438,7 +446,15 @@ func (c *Color) unformat() string {
 		}
 	}
 
-	return fmt.Sprintf("%s[%sm", escape, strings.Join(format, ";"))
+	sgrReset := fmt.Sprintf("%s[%sm", escape, strings.Join(format, ";"))
+
+	if c.link != "" {
+		// OSC 8 end: ESC]8;;ESC\ (or ST for String Terminator)
+		oscReset := fmt.Sprintf("%s]8;;%s\\", escape, escape)
+		return sgrReset + oscReset
+	}
+
+	return sgrReset
 }
 
 // DisableColor disables the color output. Useful to not change any existing
@@ -452,6 +468,15 @@ func (c *Color) DisableColor() {
 // DisableColor(). Otherwise, this method has no side effects.
 func (c *Color) EnableColor() {
 	c.noColor = boolPtr(false)
+}
+
+// Hyperlink wraps the output with OSC hyperlink escape codes.
+// It takes a URL and applies it to the color object.
+// When printed, it wraps the colored text with the hyperlink escape sequence.
+// Returns the color for chaining.
+func (c *Color) Hyperlink(url string) *Color {
+	c.link = url
+	return c
 }
 
 func (c *Color) isNoColorSet() bool {

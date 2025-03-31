@@ -238,6 +238,7 @@ func Test_noColorIsSet(t *testing.T) {
 func TestColorVisual(t *testing.T) {
 	// First Visual Test
 	Output = colorable.NewColorableStdout()
+	NoColor = false
 
 	New(FgRed).Printf("red\t")
 	New(BgRed).Print("         ")
@@ -266,6 +267,8 @@ func TestColorVisual(t *testing.T) {
 	New(FgWhite).Printf("white\t")
 	New(BgWhite).Print("         ")
 	New(FgWhite, Bold).Println(" white")
+	New(FgGreen).Hyperlink("https://example.com").Println("This should be clickable if your terminal supports it!")
+
 	fmt.Println("")
 
 	// Second Visual test
@@ -638,4 +641,38 @@ func TestSpecificUnset(t *testing.T) {
 			t.Errorf("UnsetWriter specific reset failed:\n want: %q\n  got: %q", want, got)
 		}
 	})
+}
+
+func TestHyperlink_WithColor(t *testing.T) {
+	link := "https://example.com"
+	text := "click me"
+	c := New(FgBlue).Hyperlink(link)
+	got := c.Sprint(text)
+	want := "\x1b]8;;" + link + "\x1b\\" + "\x1b[34m" + text + "\x1b[0m" + "\x1b]8;;\x1b\\"
+	if got != want {
+		t.Errorf("Expected %q, got %q", want, got)
+	}
+}
+
+func TestHyperlink_NoColor(t *testing.T) {
+	link := "https://example.com"
+	text := "click me"
+	c := New(FgBlue).Hyperlink(link)
+	c.DisableColor()
+	got := c.Sprint(text)
+	if got != text {
+		t.Errorf("Expected plain text %q when color is disabled, got %q", text, got)
+	}
+}
+
+func TestHyperlink_Fprint(t *testing.T) {
+	link := "https://example.com"
+	text := "test output"
+	var buf bytes.Buffer
+	c := New(FgGreen).Hyperlink(link)
+	c.Fprint(&buf, text)
+	want := "\x1b]8;;" + link + "\x1b\\" + "\x1b[32m" + text + "\x1b[0m" + "\x1b]8;;\x1b\\"
+	if buf.String() != want {
+		t.Errorf("Expected %q, got %q", want, buf.String())
+	}
 }
