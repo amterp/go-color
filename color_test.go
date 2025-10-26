@@ -644,6 +644,8 @@ func TestSpecificUnset(t *testing.T) {
 }
 
 func TestHyperlink_WithColor(t *testing.T) {
+	NoColor = false
+
 	link := "https://example.com"
 	text := "click me"
 	c := New(FgBlue).Hyperlink(link)
@@ -666,6 +668,8 @@ func TestHyperlink_NoColor(t *testing.T) {
 }
 
 func TestHyperlink_Fprint(t *testing.T) {
+	NoColor = false
+
 	link := "https://example.com"
 	text := "test output"
 	var buf bytes.Buffer
@@ -674,5 +678,26 @@ func TestHyperlink_Fprint(t *testing.T) {
 	want := "\x1b]8;;" + link + "\x1b\\" + "\x1b[32m" + text + "\x1b[0m" + "\x1b]8;;\x1b\\"
 	if buf.String() != want {
 		t.Errorf("Expected %q, got %q", want, buf.String())
+	}
+}
+
+func TestHyperlink_NestedInColor(t *testing.T) {
+	NoColor = false
+
+	link := "https://example.com/"
+	innerColor := New().Hyperlink(link)
+	result := innerColor.Sprint("link")
+
+	expectedWithoutSGR := "\x1b]8;;" + link + "\x1b\\link\x1b]8;;\x1b\\"
+
+	if result != expectedWithoutSGR {
+		t.Errorf("Hyperlink without color attributes should not emit SGR codes.\nExpected: %q\nGot: %q", expectedWithoutSGR, result)
+	}
+
+	outerResult := fmt.Sprintf("\x1b[36m%s\x1b[0m", fmt.Sprintf("before %s after", result))
+	expectedNested := "\x1b[36mbefore \x1b]8;;" + link + "\x1b\\link\x1b]8;;\x1b\\ after\x1b[0m"
+
+	if outerResult != expectedNested {
+		t.Errorf("Nested hyperlink should preserve outer color.\nExpected: %q\nGot: %q", expectedNested, outerResult)
 	}
 }

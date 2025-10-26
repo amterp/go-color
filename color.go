@@ -424,7 +424,10 @@ func (c *Color) wrap(s string) string {
 }
 
 func (c *Color) format() string {
-	sgrStart := fmt.Sprintf("%s[%sm", escape, c.sequence())
+	var sgrStart string
+	if len(c.params) > 0 {
+		sgrStart = fmt.Sprintf("%s[%sm", escape, c.sequence())
+	}
 
 	if c.link != "" {
 		// OSC 8 start: ESC]8;;URL ESC\  (or ST for String Terminator)
@@ -436,17 +439,19 @@ func (c *Color) format() string {
 }
 
 func (c *Color) unformat() string {
-	// for each element in sequence let's use the specific reset escape, or the generic one if not found
-	format := make([]string, len(c.params))
-	for i, v := range c.params {
-		format[i] = strconv.Itoa(int(Reset))
-		ra, ok := mapResetAttributes[v]
-		if ok {
-			format[i] = strconv.Itoa(int(ra))
+	var sgrReset string
+	if len(c.params) > 0 {
+		// for each element in sequence let's use the specific reset escape, or the generic one if not found
+		format := make([]string, len(c.params))
+		for i, v := range c.params {
+			format[i] = strconv.Itoa(int(Reset))
+			ra, ok := mapResetAttributes[v]
+			if ok {
+				format[i] = strconv.Itoa(int(ra))
+			}
 		}
+		sgrReset = fmt.Sprintf("%s[%sm", escape, strings.Join(format, ";"))
 	}
-
-	sgrReset := fmt.Sprintf("%s[%sm", escape, strings.Join(format, ";"))
 
 	if c.link != "" {
 		// OSC 8 end: ESC]8;;ESC\ (or ST for String Terminator)
